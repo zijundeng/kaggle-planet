@@ -2,7 +2,7 @@ import torch
 from torch import optim, nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from torchvision import transforms
+from torchvision import transforms, models
 
 from constant import *
 from lr_scheduler import ReduceLROnPlateau
@@ -13,10 +13,12 @@ from planet import Planet
 def main():
     training_batch_size = 32
     validation_batch_size = 32
-    epoch_num = 50
-    iter_freq_print_training_log = 150
+    epoch_num = 100
+    iter_freq_print_training_log = 200
 
-    net = Planet(base_net_pretrained=True, base_net_pretrained_path=pretrained_res152_path).cuda()
+    base_net = models.resnet152()
+    base_net.load_state_dict(torch.load(pretrained_res152_path))
+    net = Planet(base_net=base_net).cuda()
     net.train()
 
     transform = transforms.Compose([
@@ -30,9 +32,10 @@ def main():
     val_set = MultipleClassImageFolder(split_val_dir, transform)
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True)
 
-    criterion = nn.MultiLabelSoftMarginLoss().cuda()
-    optimizer = optim.Adam(net.parameters(), lr=1e-2, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, patience=5)
+    mlsm_criterion = nn.MultiLabelSoftMarginLoss().cuda()
+    bce_criterion = nn.BCELoss().cuda()
+    optimizer = optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, patience=3)
 
     best_val_loss = 1e9
     best_epoch = 0
@@ -41,10 +44,8 @@ def main():
         os.mkdir(ckpt_path)
 
     for epoch in range(0, epoch_num):
-        if epoch == 5:
-            net.open_sigmoid()
-        train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
-        val_loss = validate(val_loader, net, criterion)
+        train(train_loader, net, (mlsm_criterion, bce_criterion), optimizer, epoch, iter_freq_print_training_log)
+        val_loss = validate(val_loader, net, bce_criterion)
 
         if best_val_loss > val_loss:
             best_val_loss = val_loss
@@ -56,7 +57,7 @@ def main():
         scheduler.step(val_loss)
 
 
-def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log):
+def train(train_loader, net, criterions, optimizer, epoch, iter_freq_print_training_log):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs = Variable(inputs).cuda()
@@ -64,9 +65,9 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
 
         optimizer.zero_grad()
         out1, out2 = net(inputs)
-        aux_loss = criterion(out1, labels)
-        main_loss = criterion(out2, labels)
-        loss = aux_loss + 2 * main_loss
+        aux_loss = criterions[0](out1, labels)
+        main_loss = criterions[1](out2, labels)
+        loss = aux_loss + main_loss
         loss.backward()
         optimizer.step()
 

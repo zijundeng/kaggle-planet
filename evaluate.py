@@ -14,7 +14,7 @@ def main():
     training_batch_size = 256
     validation_batch_size = 256
 
-    net = Planet(use_sigmoid=True).cuda()
+    net = Planet().cuda()
     net.load_state_dict(
         torch.load(ckpt_path + '/epoch_1_validation_loss_0.0794413983822_iter_xx_training_loss_0.169523105025.pth'))
     net.eval()
@@ -27,7 +27,7 @@ def main():
     train_loader = DataLoader(train_set, batch_size=training_batch_size)
     val_set = MultipleClassImageFolder(split_val_dir, transform)
     val_loader = DataLoader(val_set, batch_size=validation_batch_size)
-    criterion = nn.MultiLabelSoftMarginLoss().cuda()
+    criterion = nn.BCELoss().cuda()
 
     batch_outputs, batch_labels = predict(net, train_loader)
     loss = criterion(batch_outputs, batch_labels)
@@ -97,7 +97,7 @@ def find_best_threthold(soft_output, one_hot_label):
                 accuracy, precision, recall, best_f2 = evaluation
                 thretholds[i] = t
     print 'best evaluation: accuracy %.4f, precision %.4f, recall %.4f, f2 %.4f' % (
-    accuracy, precision, recall, best_f2)
+        accuracy, precision, recall, best_f2)
     return thretholds
 
 

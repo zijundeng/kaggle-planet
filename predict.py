@@ -8,7 +8,7 @@ from torchvision import transforms
 from constant import *
 from planet import Planet
 
-net = Planet(use_sigmoid=True).cuda()
+net = Planet().cuda()
 net.load_state_dict(
     torch.load(ckpt_path + '/epoch_1_validation_loss_0.0794413983822_iter_xx_training_loss_0.169523105025.pth'))
 net.eval()
