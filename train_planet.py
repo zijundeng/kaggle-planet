@@ -3,22 +3,29 @@ from torch import optim, nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import transforms, models
+from torch.backends import cudnn
 
 from constant import *
 from lr_scheduler import ReduceLROnPlateau
 from multi_classes_folder import MultipleClassImageFolder
 from planet import Planet
 
+cudnn.benchmark = True
+
 
 def main():
     training_batch_size = 32
-    validation_batch_size = 32
-    epoch_num = 100
+    validation_batch_size = 128
+    epoch_num = 500
     iter_freq_print_training_log = 200
 
-    base_net = models.resnet152()
-    base_net.load_state_dict(torch.load(pretrained_res152_path))
-    net = Planet(base_net=base_net).cuda()
+    # base_net = models.resnet152()
+    # base_net.load_state_dict(torch.load(pretrained_res152_path))
+    # net = Planet(base_net=base_net).cuda()
+
+    net = Planet().cuda()
+    net.load_state_dict(torch.load(ckpt_path + '/epoch_20_validation_loss_0.1236.pth'))
+
     net.train()
 
     transform = transforms.Compose([
@@ -35,7 +42,7 @@ def main():
     mlsm_criterion = nn.MultiLabelSoftMarginLoss().cuda()
     bce_criterion = nn.BCELoss().cuda()
     optimizer = optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, patience=3)
+    scheduler = ReduceLROnPlateau(optimizer, patience=4)
 
     best_val_loss = 1e9
     best_epoch = 0
@@ -43,7 +50,7 @@ def main():
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
-    for epoch in range(0, epoch_num):
+    for epoch in range(20, epoch_num):
         train(train_loader, net, (mlsm_criterion, bce_criterion), optimizer, epoch, iter_freq_print_training_log)
         val_loss = validate(val_loader, net, bce_criterion)
 
