@@ -1,31 +1,25 @@
 import torch
 from torch import optim, nn
 from torch.autograd import Variable
+from torch.backends import cudnn
 from torch.utils.data import DataLoader
 from torchvision import transforms, models
-from torch.backends import cudnn
+from utils import *
 
 from constant import *
 from lr_scheduler import ReduceLROnPlateau
 from multi_classes_folder import MultipleClassImageFolder
-from planet import Planet
 
 cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 32
-    validation_batch_size = 128
+    training_batch_size = 8
+    validation_batch_size = 8
     epoch_num = 500
-    iter_freq_print_training_log = 200
+    iter_freq_print_training_log = 800
 
-    # base_net = models.resnet152()
-    # base_net.load_state_dict(torch.load(pretrained_res152_path))
-    # net = Planet(base_net=base_net).cuda()
-
-    net = Planet().cuda()
-    net.load_state_dict(torch.load(ckpt_path + '/epoch_20_validation_loss_0.1236.pth'))
-
+    net = get_res152(pretrained=True).cuda()
     net.train()
 
     transform = transforms.Compose([
@@ -35,14 +29,13 @@ def main():
     ])
 
     train_set = MultipleClassImageFolder(split_train_dir, transform)
-    train_loader = DataLoader(train_set, batch_size=training_batch_size, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=training_batch_size, shuffle=True, num_workers=8)
     val_set = MultipleClassImageFolder(split_val_dir, transform)
-    val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True)
+    val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True, num_workers=8)
 
-    mlsm_criterion = nn.MultiLabelSoftMarginLoss().cuda()
-    bce_criterion = nn.BCELoss().cuda()
-    optimizer = optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, patience=4)
+    criterion = nn.MultiLabelSoftMarginLoss().cuda()
+    optimizer = optim.Adam(net.parameters(), lr=1e-3)
+    scheduler = ReduceLROnPlateau(optimizer, patience=8, verbose=True)
 
     best_val_loss = 1e9
     best_epoch = 0
@@ -50,9 +43,9 @@ def main():
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
-    for epoch in range(20, epoch_num):
-        train(train_loader, net, (mlsm_criterion, bce_criterion), optimizer, epoch, iter_freq_print_training_log)
-        val_loss = validate(val_loader, net, bce_criterion)
+    for epoch in range(0, epoch_num):
+        train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
+        val_loss = validate(val_loader, net, criterion)
 
         if best_val_loss > val_loss:
             best_val_loss = val_loss
@@ -64,23 +57,21 @@ def main():
         scheduler.step(val_loss)
 
 
-def train(train_loader, net, criterions, optimizer, epoch, iter_freq_print_training_log):
+def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs = Variable(inputs).cuda()
         labels = Variable(labels.float()).cuda()
 
         optimizer.zero_grad()
-        out1, out2 = net(inputs)
-        aux_loss = criterions[0](out1, labels)
-        main_loss = criterions[1](out2, labels)
-        loss = aux_loss + main_loss
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
 
         if (i + 1) % iter_freq_print_training_log == 0:
             print '[epoch %d], [iter %d], [training_batch_loss %.4f]' % (
-                epoch + 1, i + 1, main_loss.data[0])
+                epoch + 1, i + 1, loss.data[0])
 
 
 def validate(val_loader, net, criterion):
@@ -92,9 +83,9 @@ def validate(val_loader, net, criterion):
         inputs = Variable(inputs, volatile=True).cuda()
         labels = Variable(labels.float(), volatile=True).cuda()
 
-        _, out = net(inputs)
+        outputs = net(inputs)
 
-        batch_outputs.append(out)
+        batch_outputs.append(outputs)
         batch_labels.append(labels)
 
     batch_outputs = torch.cat(batch_outputs)

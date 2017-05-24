@@ -3,20 +3,18 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from torchvision import transforms
+from torchvision import transforms, models
+from utils import *
 
 from constant import *
 from multi_classes_folder import MultipleClassImageFolder
-from planet import Planet
 
 
 def main():
-    training_batch_size = 256
-    validation_batch_size = 256
+    training_batch_size = 32
+    validation_batch_size = 32
 
-    net = Planet().cuda()
-    net.load_state_dict(
-        torch.load(ckpt_path + '/epoch_1_validation_loss_0.0794413983822_iter_xx_training_loss_0.169523105025.pth'))
+    net = get_res152(snapshot_path='xxx').cuda()
     net.eval()
 
     transform = transforms.Compose([
@@ -27,18 +25,18 @@ def main():
     train_loader = DataLoader(train_set, batch_size=training_batch_size)
     val_set = MultipleClassImageFolder(split_val_dir, transform)
     val_loader = DataLoader(val_set, batch_size=validation_batch_size)
-    criterion = nn.BCELoss().cuda()
+    criterion = nn.MultiLabelSoftMarginLoss().cuda()
 
     batch_outputs, batch_labels = predict(net, train_loader)
     loss = criterion(batch_outputs, batch_labels)
-    print 'training loss %.4f' % loss.data.numpy()[0]
+    print 'training loss %.4f' % loss.cpu().data.numpy()[0]
     batch_outputs = batch_outputs.cpu().data.numpy()
     batch_labels = batch_labels.cpu().data.numpy()
     thretholds = find_best_threthold(batch_outputs, batch_labels)
 
     batch_outputs, batch_labels = predict(net, val_loader)
     loss = criterion(batch_outputs, batch_labels)
-    print 'validation loss %.4f' % loss.data.numpy()[0]
+    print 'validation loss %.4f' % loss.cpu().data.numpy()[0]
     batch_outputs = batch_outputs.cpu().data.numpy()
     batch_labels = batch_labels.cpu().data.numpy()
     prediction = get_one_hot_prediction(batch_outputs, thretholds)
@@ -55,11 +53,11 @@ def predict(net, loader):
         inputs = Variable(inputs, volatile=True).cuda()
         labels = Variable(labels.float(), volatile=True).cuda()
 
-        _, out = net(inputs)
+        outputs = net(inputs)
 
-        batch_outputs.append(out)
+        batch_outputs.append(outputs)
         batch_labels.append(labels)
-        print '%d image predicted' % i
+        print '%d batches predicted' % i
 
     batch_outputs = torch.cat(batch_outputs)
     batch_labels = torch.cat(batch_labels)
@@ -85,10 +83,10 @@ def get_one_hot_prediction(soft_output, thretholds):
 
 
 def find_best_threthold(soft_output, one_hot_label):
-    accuracy = precision = recall = best_f2 = 1e9
+    accuracy = precision = recall = best_f2 = -1
     thretholds = np.zeros((soft_output.shape[1]))
     for i in xrange(thretholds.shape[0]):
-        for t in np.arange(0, 1, 0.01):
+        for t in np.arange(-10, 10, 0.01):
             thretholds_tmp = thretholds.copy()
             thretholds_tmp[i] = t
             prediction = get_one_hot_prediction(soft_output, thretholds_tmp)
@@ -98,6 +96,7 @@ def find_best_threthold(soft_output, one_hot_label):
                 thretholds[i] = t
     print 'best evaluation: accuracy %.4f, precision %.4f, recall %.4f, f2 %.4f' % (
         accuracy, precision, recall, best_f2)
+    print 'best thretholds:', thretholds
     return thretholds
 
 
