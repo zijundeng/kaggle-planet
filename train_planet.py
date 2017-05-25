@@ -6,18 +6,18 @@ from torchvision import transforms
 
 from utils import *
 from multi_classes_folder import MultipleClassImageFolder
-from lr_scheduler import ReduceLROnPlateau
 
 cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 8
+    training_batch_size = 32
     validation_batch_size = 8
     epoch_num = 500
-    iter_freq_print_training_log = 800
+    iter_freq_print_training_log = 100
+    iter_freq_validate = 200
 
-    net = get_res152(snapshot_path=ckpt_path+'/epoch_21_validation_loss_0.0922.pth').cuda()
+    net = get_res152(snapshot_path=ckpt_path+'/epoch_29_validation_loss_0.0960_iter_200.pth').cuda()
     net.train()
 
     transform = transforms.Compose([
@@ -33,29 +33,17 @@ def main():
 
     criterion = nn.MultiLabelSoftMarginLoss().cuda()
     optimizer = optim.Adam(net.parameters(), lr=1e-4, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, patience=8, verbose=True)
-
-    best_val_loss = 1e9
-    best_epoch = 0
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
-    for epoch in range(21, epoch_num):
-        train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
-        val_loss = validate(val_loader, net, criterion)
+    info = [1e9, 0, 0]
 
-        if best_val_loss > val_loss:
-            best_val_loss = val_loss
-            best_epoch = epoch + 1
-        print '[best_val_loss %.4f], [best_epoch %d]' % (best_val_loss, best_epoch)
-        print '--------------------------------------------------------'
-        torch.save(net.state_dict(), ckpt_path + '/epoch_%d_validation_loss_%.4f.pth' % (epoch + 1, val_loss))
-
-        scheduler.step(val_loss)
+    for epoch in range(29, epoch_num):
+        train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate, val_loader, info)
 
 
-def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log):
+def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate, val_loader, info):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs = Variable(inputs).cuda()
@@ -70,6 +58,16 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
         if (i + 1) % iter_freq_print_training_log == 0:
             print '[epoch %d], [iter %d], [training_batch_loss %.4f]' % (
                 epoch + 1, i + 1, loss.data[0])
+
+        if (i + 1) % iter_freq_validate == 0:
+            val_loss = validate(val_loader, net, criterion)
+            if info[0] > val_loss:
+                info[0] = val_loss
+                info[1] = epoch + 1
+                info[2] = i + 1
+                torch.save(net.state_dict(), ckpt_path + '/epoch_%d_validation_loss_%.4f_iter_%d.pth' % (epoch + 1, val_loss, i + 1))
+            print '[best_val_loss %.4f], [best_epoch %d], [best_iter %d]' % (info[0], info[1], info[2])
+            print '--------------------------------------------------------'
 
 
 def validate(val_loader, net, criterion):
