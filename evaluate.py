@@ -3,9 +3,8 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from constant import *
+from multi_classes_folder import MultipleClassImageFolder
 from utils import *
-from variation.multi_classes_folder import MultipleClassImageFolder
 
 
 def main():

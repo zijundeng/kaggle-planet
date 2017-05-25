@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from utils import *
-from variation import ImageFolder
+from folder import ImageFolder
 
 net = get_res152(snapshot_path='xxx').cuda()
 net.eval()

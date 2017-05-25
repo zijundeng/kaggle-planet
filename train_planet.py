@@ -5,8 +5,8 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from utils import *
-from variation import MultipleClassImageFolder
-from variation import ReduceLROnPlateau
+from multi_classes_folder import MultipleClassImageFolder
+from lr_scheduler import ReduceLROnPlateau
 
 cudnn.benchmark = True
 
