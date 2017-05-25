@@ -62,7 +62,7 @@ def get_dense201(pretrained=False, snapshot_path=None):
 def get_squeeze(pretrained=False, snapshot_path=None):
     net = models.squeezenet1_1()
     if pretrained:
-        net.load_state_dict(torch.load(pretrained_dense201_path))
+        net.load_state_dict(torch.load(pretrained_squeeze1_1_path))
 
     final_conv = nn.Conv2d(512, num_classes, kernel_size=1)
     net.classifier = nn.Sequential(

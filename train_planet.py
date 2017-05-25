@@ -1,14 +1,12 @@
-import torch
-from torch import optim, nn
+from torch import optim
 from torch.autograd import Variable
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
-from torchvision import transforms, models
-from utils import *
+from torchvision import transforms
 
-from constant import *
-from lr_scheduler import ReduceLROnPlateau
-from multi_classes_folder import MultipleClassImageFolder
+from utils import *
+from variation import MultipleClassImageFolder
+from variation import ReduceLROnPlateau
 
 cudnn.benchmark = True
 

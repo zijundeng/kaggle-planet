@@ -9,7 +9,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 from constant import *
-from multi_classes_folder import MultipleClassImageFolder
+from variation.multi_classes_folder import MultipleClassImageFolder
 
 cudnn.benchmark = True
 

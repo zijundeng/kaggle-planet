@@ -1,16 +1,12 @@
-from PIL import Image
-
 import numpy as np
 import pandas as pd
 import scipy.io as sio
-import torch
-from torch.utils.data import DataLoader
 from torch.autograd import Variable
+from torch.utils.data import DataLoader
 from torchvision import transforms
-from folder import ImageFolder
 
-from constant import *
 from utils import *
+from variation import ImageFolder
 
 net = get_res152(snapshot_path='xxx').cuda()
 net.eval()
