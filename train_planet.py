@@ -19,7 +19,7 @@ def main():
     epoch_num = 500
     iter_freq_print_training_log = 800
 
-    net = get_res152(pretrained=True).cuda()
+    net = get_res152(snapshot_path=ckpt_path+'/epoch_21_validation_loss_0.0922.pth').cuda()
     net.train()
 
     transform = transforms.Compose([
@@ -34,7 +34,7 @@ def main():
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True, num_workers=8)
 
     criterion = nn.MultiLabelSoftMarginLoss().cuda()
-    optimizer = optim.Adam(net.parameters(), lr=1e-3)
+    optimizer = optim.Adam(net.parameters(), lr=1e-4, weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, patience=8, verbose=True)
 
     best_val_loss = 1e9
@@ -43,7 +43,7 @@ def main():
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
-    for epoch in range(0, epoch_num):
+    for epoch in range(21, epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
         val_loss = validate(val_loader, net, criterion)
 
