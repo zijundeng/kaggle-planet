@@ -4,24 +4,31 @@ from torch.backends import cudnn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from utils import *
+from constant import *
+from models import *
 from multi_classes_folder import MultipleClassImageFolder
+from transforms import RandomVerticalFlip
 
 cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 32
+    training_batch_size = 16
     validation_batch_size = 8
-    epoch_num = 500
-    iter_freq_print_training_log = 100
-    iter_freq_validate = 200
+    epoch_num = 100
+    iter_freq_print_training_log = 10
+    iter_freq_validate = 30
+    lr = 1e-2
+    weight_decay = 1e-4
 
-    net = get_res152(snapshot_path=ckpt_path+'/epoch_29_validation_loss_0.0960_iter_200.pth').cuda()
+    net = get_inception_v3(num_classes=num_classes, pretrained=True).cuda()
     net.train()
 
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
+        RandomVerticalFlip(),
+        transforms.RandomCrop(224),  # initially crop, later on cancel it
+        transforms.Scale(299),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -32,18 +39,26 @@ def main():
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True, num_workers=8)
 
     criterion = nn.MultiLabelSoftMarginLoss().cuda()
-    optimizer = optim.Adam(net.parameters(), lr=1e-4, weight_decay=1e-4)
+    optimizer = optim.SGD(net.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9, nesterov=True)
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
     info = [1e9, 0, 0]
 
-    for epoch in range(29, epoch_num):
-        train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate, val_loader, info)
+    for epoch in range(0, epoch_num):
+        train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate,
+              val_loader, info)
+        if epoch % 2 == 0:
+            for param_group in optimizer.param_groups:
+                param_group['weight_decay'] = 0
+        else:
+            for param_group in optimizer.param_groups:
+                param_group['weight_decay'] = weight_decay
 
 
-def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate, val_loader, info):
+def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate, val_loader,
+          info):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs = Variable(inputs).cuda()
@@ -51,13 +66,21 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
 
         optimizer.zero_grad()
         outputs = net(inputs)
-        loss = criterion(outputs, labels)
+        main_loss = criterion(outputs[-1], labels)
+        aux_loss = None
+        for aux in outputs[:-1]:
+            if aux_loss is None:
+                aux_loss = criterion(aux, labels)
+            else:
+                aux_loss += criterion(aux, labels)
+        loss = aux_loss + main_loss
         loss.backward()
         optimizer.step()
 
         if (i + 1) % iter_freq_print_training_log == 0:
-            print '[epoch %d], [iter %d], [training_batch_loss %.4f]' % (
-                epoch + 1, i + 1, loss.data[0])
+            print '[epoch %d], [iter %d], [training_batch_total_loss %.4f], [training_batch_main_loss %.4f], ' \
+                  '[training_batch_aux_loss %.4f]' % (
+                      epoch + 1, i + 1, loss.data[0], main_loss.data[0], aux_loss.data[0])
 
         if (i + 1) % iter_freq_validate == 0:
             val_loss = validate(val_loader, net, criterion)
@@ -65,7 +88,8 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
                 info[0] = val_loss
                 info[1] = epoch + 1
                 info[2] = i + 1
-                torch.save(net.state_dict(), ckpt_path + '/epoch_%d_validation_loss_%.4f_iter_%d.pth' % (epoch + 1, val_loss, i + 1))
+                torch.save(net.state_dict(),
+                           ckpt_path + '/epoch_%d_validation_loss_%.4f_iter_%d.pth' % (epoch + 1, val_loss, i + 1))
             print '[best_val_loss %.4f], [best_epoch %d], [best_iter %d]' % (info[0], info[1], info[2])
             print '--------------------------------------------------------'
 
@@ -81,7 +105,7 @@ def validate(val_loader, net, criterion):
 
         outputs = net(inputs)
 
-        batch_outputs.append(outputs)
+        batch_outputs.append(outputs[-1])
         batch_labels.append(labels)
 
     batch_outputs = torch.cat(batch_outputs)
