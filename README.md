@@ -20,3 +20,5 @@ the model.
 
 5. When the training is nearly at the end, use very high log frequency to find best model.
 
+6. Initially use small batch size for fast convergence. Later on increase the batch size for more steady training.
+

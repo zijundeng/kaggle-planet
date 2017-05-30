@@ -16,12 +16,13 @@ def main():
     training_batch_size = 16
     validation_batch_size = 8
     epoch_num = 100
-    iter_freq_print_training_log = 10
-    iter_freq_validate = 30
+    iter_freq_print_training_log = 100
+    iter_freq_validate = 500
     lr = 1e-2
     weight_decay = 1e-4
 
-    net = get_inception_v3(num_classes=num_classes, pretrained=True).cuda()
+    net = get_inception_v3(num_classes=num_classes,
+                           snapshot_path=os.path.join(ckpt_path, 'epoch_2_validation_loss_0.1147_iter_1000.pth')).cuda()
     net.train()
 
     transform = transforms.Compose([
@@ -39,22 +40,30 @@ def main():
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True, num_workers=8)
 
     criterion = nn.MultiLabelSoftMarginLoss().cuda()
-    optimizer = optim.SGD(net.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9, nesterov=True)
+    optimizer = optim.SGD([
+        {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias']},
+        {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
+         'weight_decay': weight_decay}
+    ], lr=lr, momentum=0.9, nesterov=True)
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
     info = [1e9, 0, 0]
 
-    for epoch in range(0, epoch_num):
+    for epoch in range(epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate,
               val_loader, info)
         if epoch % 2 == 0:
             for param_group in optimizer.param_groups:
-                param_group['weight_decay'] = 0
+                if 'weight_decay' in param_group:
+                    param_group['weight_decay'] = 0
+                    print 'weight_decay is set to 0'
         else:
             for param_group in optimizer.param_groups:
-                param_group['weight_decay'] = weight_decay
+                if 'weight_decay' in param_group:
+                    param_group['weight_decay'] = weight_decay
+                    print 'weight_decay is set to %.4f' % weight_decay
 
 
 def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate, val_loader,
