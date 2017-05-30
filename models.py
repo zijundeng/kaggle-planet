@@ -21,7 +21,7 @@ def _weights_init(model):
             m.bias.data.zero_()
 
 
-def _snapshot(get_model):
+def _make_model(get_model):
     functools.wraps(get_model)
 
     def wrapper_get_model(num_classes, pretrained=False, snapshot_path=None):
@@ -37,7 +37,7 @@ def _snapshot(get_model):
     return wrapper_get_model
 
 
-@_snapshot
+@_make_model
 def get_res152(num_classes, pretrained):
     net = models.resnet152()
     if pretrained:
@@ -46,7 +46,7 @@ def get_res152(num_classes, pretrained):
     return net
 
 
-@_snapshot
+@_make_model
 def get_inception_v3(num_classes, pretrained):
     net = models.inception_v3()
     if pretrained:
@@ -56,7 +56,7 @@ def get_inception_v3(num_classes, pretrained):
     return net
 
 
-@_snapshot
+@_make_model
 def get_vgg19(num_classes, pretrained):
     net = models.vgg19()
     if pretrained:
@@ -73,7 +73,7 @@ def get_vgg19(num_classes, pretrained):
     return net
 
 
-@_snapshot
+@_make_model
 def get_dense201(num_classes, pretrained):
     net = models.densenet201()
     if pretrained:
@@ -95,5 +95,8 @@ class _MultiLabelNet(nn.Module):
             x = self.cross_label(aux1)
             return aux1, aux2, x
         x = self.cross_label(aux)
-        return aux, x
+        if self.training:
+            return aux, x
+        else:
+            return x
 

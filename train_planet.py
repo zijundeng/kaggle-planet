@@ -18,11 +18,11 @@ def main():
     epoch_num = 100
     iter_freq_print_training_log = 100
     iter_freq_validate = 500
-    lr = 1e-2
+    lr = 1e-3
     weight_decay = 1e-4
 
     net = get_inception_v3(num_classes=num_classes,
-                           snapshot_path=os.path.join(ckpt_path, 'epoch_2_validation_loss_0.1147_iter_1000.pth')).cuda()
+                           snapshot_path=os.path.join(ckpt_path, 'epoch_10_validation_loss_0.0847_iter_1000.pth')).cuda()
     net.train()
 
     transform = transforms.Compose([
@@ -51,19 +51,15 @@ def main():
 
     info = [1e9, 0, 0]
 
-    for epoch in range(epoch_num):
+    for epoch in range(9, epoch_num):
+        if epoch % 2 == 1:
+            optimizer.param_groups[1]['weight_decay'] = 0
+            print 'weight_decay is set to 0'
+        else:
+            optimizer.param_groups[1]['weight_decay'] = weight_decay
+            print 'weight_decay is set to %.4f' % weight_decay
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate,
               val_loader, info)
-        if epoch % 2 == 0:
-            for param_group in optimizer.param_groups:
-                if 'weight_decay' in param_group:
-                    param_group['weight_decay'] = 0
-                    print 'weight_decay is set to 0'
-        else:
-            for param_group in optimizer.param_groups:
-                if 'weight_decay' in param_group:
-                    param_group['weight_decay'] = weight_decay
-                    print 'weight_decay is set to %.4f' % weight_decay
 
 
 def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, iter_freq_validate, val_loader,
