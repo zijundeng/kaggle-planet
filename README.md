@@ -3,7 +3,7 @@
 1. This project is for the [competition](https://www.kaggle.com/c/planet-understanding-the-amazon-from-space) and is
 implemented in PyTorch.
 
-2. I use resnet-152 and get my best score 0.92563 on Kaggle. I have tried some model fusion tricks but it doesn't work
+2. I used resnet-152 and got my best score 0.92563 on Kaggle. I have tried some model fusion tricks but it didn't work
 better.
 
 
