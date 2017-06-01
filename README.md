@@ -7,7 +7,7 @@ implemented in PyTorch.
 better.
 
 
-# Training tricks:
+## Training tricks
 
 1. Firstly randomly crop the image. When the val loss doesn't decrease any more, cancel the crop setting for
 possible improvement of the model.
