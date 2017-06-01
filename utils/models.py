@@ -1,24 +1,33 @@
 import functools
-import os
 import math
 
 import torch
 from torch import nn
 from torchvision import models
 
-pytorch_pretrained_root = '/media/b3-542/LIBRARY/ZijunDeng/PyTorch Pretrained'
-pretrained_res152_path = os.path.join(pytorch_pretrained_root, 'ResNet', 'resnet152-b121ed2d.pth')
-pretrained_inception_v3_path = os.path.join(pytorch_pretrained_root, 'Inception', 'inception_v3_google-1a9a5a14.pth')
-pretrained_vgg19_path = os.path.join(pytorch_pretrained_root, 'VggNet', 'vgg19-dcbb9e9d.pth')
-pretrained_dense201_path = os.path.join(pytorch_pretrained_root, 'DenseNet', 'densenet201-4c113574.pth')
+from configuration import *
 
 
-def _weights_init(model):
+def _weights_init(model, pretrained):
     for m in model.modules():
-        if isinstance(m, nn.Linear):
-            n = m.weight.size(1)
-            m.weight.data.normal_(0, math.sqrt(2. / n))
-            m.bias.data.zero_()
+        if pretrained:
+            if isinstance(m, nn.Linear):
+                n = m.weight.size(1)
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                m.bias.data.zero_()
+        else:
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                n = m.weight.size(1)
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                m.bias.data.zero_()
 
 
 def _make_model(get_model):
@@ -31,7 +40,7 @@ def _make_model(get_model):
             net.load_state_dict(torch.load(snapshot_path))
             print 'load snapshot %s' % snapshot_path
         else:
-            _weights_init(net)
+            _weights_init(net, pretrained)
         return net
 
     return wrapper_get_model
@@ -99,4 +108,3 @@ class _MultiLabelNet(nn.Module):
             return aux, x
         else:
             return x
-

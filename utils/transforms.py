@@ -1,5 +1,5 @@
-from PIL import Image
 import random
+from PIL import Image
 
 
 class RandomVerticalFlip(object):
@@ -10,4 +10,3 @@ class RandomVerticalFlip(object):
         if random.random() < 0.5:
             return img.transpose(Image.FLIP_TOP_BOTTOM)
         return img
-

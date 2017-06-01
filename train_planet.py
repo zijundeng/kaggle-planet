@@ -4,40 +4,37 @@ from torch.backends import cudnn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from constant import *
-from models import *
-from multi_classes_folder import MultipleClassImageFolder
-from transforms import RandomVerticalFlip
+from utils import MultipleClassImageFolder
+from utils.models import *
+from utils.transforms import RandomVerticalFlip
 
 cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 16
-    validation_batch_size = 8
+    training_batch_size = 32
+    validation_batch_size = 32
     epoch_num = 100
     iter_freq_print_training_log = 100
     iter_freq_validate = 500
-    lr = 1e-3
+    lr = 1e-2
     weight_decay = 1e-4
 
-    net = get_inception_v3(num_classes=num_classes,
-                           snapshot_path=os.path.join(ckpt_path, 'epoch_10_validation_loss_0.0847_iter_1000.pth')).cuda()
+    net = get_res152(num_classes=num_classes)
+    # net = get_res152(num_classes=num_classes, snapshot_path=os.path.join(ckpt_path, 'xxx.pth')).cuda()
     net.train()
 
     transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         RandomVerticalFlip(),
-        transforms.RandomCrop(224),  # initially crop, later on cancel it
-        transforms.Scale(299),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.Normalize([0.311, 0.340, 0.299], [0.167, 0.144, 0.138])
     ])
 
     train_set = MultipleClassImageFolder(split_train_dir, transform)
-    train_loader = DataLoader(train_set, batch_size=training_batch_size, shuffle=True, num_workers=8)
+    train_loader = DataLoader(train_set, batch_size=training_batch_size, shuffle=True, num_workers=16)
     val_set = MultipleClassImageFolder(split_val_dir, transform)
-    val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True, num_workers=8)
+    val_loader = DataLoader(val_set, batch_size=validation_batch_size, shuffle=True, num_workers=16)
 
     criterion = nn.MultiLabelSoftMarginLoss().cuda()
     optimizer = optim.SGD([
@@ -49,9 +46,9 @@ def main():
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
-    info = [1e9, 0, 0]
+    info = [1e9, 0, 0]  # [best val loss, epoch, iter]
 
-    for epoch in range(9, epoch_num):
+    for epoch in range(0, epoch_num):
         if epoch % 2 == 1:
             optimizer.param_groups[1]['weight_decay'] = 0
             print 'weight_decay is set to 0'
@@ -110,7 +107,7 @@ def validate(val_loader, net, criterion):
 
         outputs = net(inputs)
 
-        batch_outputs.append(outputs[-1])
+        batch_outputs.append(outputs)
         batch_labels.append(labels)
 
     batch_outputs = torch.cat(batch_outputs)

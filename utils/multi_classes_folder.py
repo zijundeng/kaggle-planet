@@ -66,8 +66,7 @@ class MultipleClassImageFolder(data.Dataset):
         imgs = make_train_dataset(root, classes, class_to_idx)
         if len(imgs) == 0:
             raise (RuntimeError("Found 0 images in folder: " + root + "\n"
-                                                                      "Supported image extensions are: " + ",".join(
-                IMG_EXTENSIONS)))
+                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
 
         self.root = root
         self.imgs = imgs

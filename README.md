@@ -1,24 +1,22 @@
-# Kaggle Planet competition code implemented in PyTorch
+# Kaggle Planet competition
 
-1. This is for the [competition](https://www.kaggle.com/c/planet-understanding-the-amazon-from-space) and implemented
-in PyTorch
+1. This project is for the [competition](https://www.kaggle.com/c/planet-understanding-the-amazon-from-space) and is
+implemented in PyTorch.
 
-2. The model is based on ResNet152 and using a pretrained one.
-
-3. Thanks for the nice [lr scheduler](https://github.com/pytorch/pytorch/pull/1370) provided by Jiaming Liu.
+2. I use resnet-152 and get my best score 0.92563 on Kaggle. I have tried some model fusion tricks but it doesn't work
+better.
 
 
 # Training tricks:
-1. Use lr=1e-2 to warm up the training. At this time the log freq should be high for better monitoring.
 
-2. Firstly crop the image. When the training is nearly finished, cancel the crop setting for possible improvement of
-the model.
+1. Firstly randomly crop the image. When the val loss doesn't decrease any more, cancel the crop setting for
+possible improvement of the model.
 
-3. The weight decay is used periodically
+2. The weight decay is used periodically.
 
-4. Use SGD + Momentum + Nesterov. Don't use Adam or others.
+3. Use SGD + Momentum + Nesterov.
 
-5. When the training is nearly at the end, use very high log frequency to find best model.
+4. When the validation loss decreases to very low, validate the model more frequently to find the best one.
 
-6. Initially use small batch size for fast convergence. Later on increase the batch size for more steady training.
+5. Initially use small batch size for fast convergence. Later on increase the batch size for more steady training.
 

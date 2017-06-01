@@ -2,7 +2,7 @@ from PIL import Image
 
 import numpy as np
 
-from constant import *
+from configuration import *
 
 val_percentage = 0.05
 img_list = os.listdir(train_dir)
@@ -22,3 +22,4 @@ for i, v in enumerate(val_data):
     img_rgb = Image.open(os.path.join(train_dir, v)).convert('RGB')
     img_rgb.save(os.path.join(split_val_dir, v))
     print 'processed %d val images' % i
+

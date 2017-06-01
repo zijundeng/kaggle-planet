@@ -2,17 +2,15 @@ import numpy as np
 import pandas as pd
 import scipy.io as sio
 
-from constant import *
+from configuration import *
 
 test_img_names_without_ext = [os.path.splitext(i)[0] for i in os.listdir(test_dir)]
-res = sio.loadmat('./res.mat')['prediction']
-inception = sio.loadmat('./inception.mat')['prediction']
-vgg = sio.loadmat('./vgg.mat')['prediction']
-dense = sio.loadmat('./dense.mat')['prediction']
 
-classes = ['agriculture', 'artisinal_mine', 'bare_ground', 'blooming', 'blow_down', 'clear', 'cloudy',
-           'conventional_mine', 'cultivation', 'habitation', 'haze', 'partly_cloudy', 'primary', 'road',
-           'selective_logging', 'slash_burn', 'water']
+# load the saved prediction
+res = sio.loadmat('./res_predictions.mat')['predictions']
+inception = sio.loadmat('./inception_predictions.mat')['predictions']
+vgg = sio.loadmat('./vgg_predictions.mat')['predictions']
+dense = sio.loadmat('./dense_predictions.mat')['predictions']
 
 total = res + inception + vgg + dense
 
