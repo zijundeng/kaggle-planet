@@ -1,12 +1,13 @@
-from torch import optim
+from torch import optim, nn
 from torch.autograd import Variable
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
 from torchvision import transforms
+import torch
 
-from utils import MultipleClassImageFolder
-from utils.models import *
-from utils.transforms import RandomVerticalFlip
+from utils import *
+from utils import models
+from configuration import *
 
 cudnn.benchmark = True
 
@@ -20,7 +21,7 @@ def main():
     lr = 1e-2
     weight_decay = 1e-4
 
-    net = get_res152(num_classes=num_classes)
+    net = models.get_res152(num_classes=num_classes)
     # net = get_res152(num_classes=num_classes, snapshot_path=os.path.join(ckpt_path, 'xxx.pth')).cuda()
     net.train()
 
