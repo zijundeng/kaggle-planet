@@ -31,8 +31,7 @@ def _weights_init(model, pretrained):
 
 
 def _make_model(get_model):
-    functools.wraps(get_model)
-
+    @functools.wraps(get_model)
     def wrapper_get_model(num_classes, pretrained=False, snapshot_path=None):
         net = get_model(num_classes, pretrained)
         net = _MultiLabelNet(net, num_classes)
